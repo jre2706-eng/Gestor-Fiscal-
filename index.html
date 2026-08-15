@@ -5,78 +5,426 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestor Fiscal</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body class="bg-gray-100 min-h-screen font-sans">
-  <!-- Encabezado -->
-  <header class="bg-blue-700 text-white shadow-md p-4 flex justify-between items-center">
-    <div class="flex items-center space-x-3">
-      <span class="text-2xl">📊</span>
-      <h1 class="text-xl font-bold">Gestor Fiscal</h1>
-      <span id="envBadge" class="bg-blue-900 text-xs text-blue-200 px-2 py-1 rounded-full font-mono">PROD</span>
+<body class="bg-slate-100 min-h-screen font-sans text-slate-800">
+
+  <!-- Cabecera -->
+  <header class="bg-blue-800 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div class="flex items-center space-x-3">
+        <span class="text-2xl">📊</span>
+        <div>
+          <h1 class="text-lg font-bold leading-tight">Gestor Fiscal</h1>
+          <span class="text-xs text-blue-200">Declaración de la Renta</span>
+        </div>
+      </div>
+      <button id="authBtn" onclick="iniciarConexion()" class="bg-white text-blue-800 font-semibold px-4 py-2 rounded-lg shadow hover:bg-blue-50 transition text-sm flex items-center space-x-2">
+        <span id="authIcon">🔑</span>
+        <span id="authText">Conectar Google Drive</span>
+      </button>
     </div>
-    <button id="loginBtn" onclick="handleAuth()" class="bg-white text-blue-700 font-semibold px-4 py-2 rounded-lg shadow hover:bg-gray-100 transition">
-      Conectar Google Drive
-    </button>
   </header>
 
-  <!-- Contenido Principal -->
-  <main class="max-w-4xl mx-auto p-6 mt-6">
-    <!-- Banner de Estado -->
-    <div id="statusCard" class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
-      <h2 class="text-lg font-semibold text-gray-800 mb-2">Estado de la Conexión</h2>
-      <p id="statusText" class="text-gray-600">Haz clic en "Conectar Google Drive" para sincronizar tus datos fiscales con tu cuenta personal.</p>
+  <!-- Contenedor Principal -->
+  <main class="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+
+    <!-- Estado de Sincronización -->
+    <div id="statusBanner" class="p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-900 flex items-center justify-between transition-all">
+      <div class="flex items-center space-x-3">
+        <span id="statusIcon" class="text-xl">⚠️</span>
+        <p id="statusMsg" class="text-sm md:text-base font-medium">Pulsa en "Conectar Google Drive" para sincronizar tus datos fiscales con tu cuenta personal.</p>
+      </div>
+      <span id="fileBadge" class="hidden text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full font-mono font-medium">/GestorFiscal/datos_fiscales.json</span>
     </div>
 
-    <!-- Panel de Gestión de Rendimientos (Placeholder) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h3 class="text-md font-bold text-gray-700 mb-2">📈 Rendimientos de Capital</h3>
-        <p class="text-sm text-gray-500 mb-4">Dividendos, intereses bancarios, alquileres y cupones.</p>
-        <button class="w-full bg-blue-50 text-blue-700 font-medium py-2 rounded-lg border border-blue-200 hover:bg-blue-100 transition">
-          + Añadir Rendimiento
+    <!-- Filtro de Ejercicio Fiscal -->
+    <div class="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+      <div class="flex items-center space-x-3">
+        <span class="font-semibold text-slate-700">Año Fiscal:</span>
+        <select id="selectAnio" onchange="cambiarAnio()" class="bg-slate-50 border border-slate-300 font-bold text-slate-700 py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="2026">2026</option>
+          <option value="2025" selected>2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
+        </select>
+      </div>
+      <span id="totalRegistros" class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">0 registros cargados</span>
+    </div>
+
+    <!-- Botones de Acción / Modales -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+            <span>📈</span>
+            <span>Rendimientos de Capital</span>
+          </h3>
+          <p class="text-xs text-slate-500">Intereses, dividendos, alquileres y seguros.</p>
+        </div>
+        <button onclick="abrirModalRendimiento()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
+          + Añadir
         </button>
       </div>
 
-      <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-        <h3 class="text-md font-bold text-gray-700 mb-2">🏠 Ganancias Patrimoniales</h3>
-        <p class="text-sm text-gray-500 mb-4">Ventas de acciones, fondos de inversión, criptoactivos e inmuebles.</p>
-        <button class="w-full bg-green-50 text-green-700 font-medium py-2 rounded-lg border border-green-200 hover:bg-green-100 transition">
-          + Añadir Ganancia/Pérdida
+      <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+            <span>🏠</span>
+            <span>Ganancias / Pérdidas</span>
+          </h3>
+          <p class="text-xs text-slate-500">Ventas de acciones, fondos, inmuebles y cripto.</p>
+        </div>
+        <button onclick="abrirModalGanancia()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-xl transition">
+          + Añadir
         </button>
       </div>
     </div>
+
+    <!-- Tablas de Registros -->
+    <div class="space-y-6">
+      
+      <!-- Tabla Rendimientos -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700 text-sm flex justify-between">
+          <span>Rendimientos de Capital Mobiliario / Inmobiliario</span>
+          <span id="subtotalRendimientos" class="text-blue-700 font-mono">0.00 €</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-100 text-xs uppercase text-slate-500 border-b">
+              <tr>
+                <th class="p-3">Tipo</th>
+                <th class="p-3">Entidad / Concepto</th>
+                <th class="p-3 text-right">Importe Bruto</th>
+                <th class="p-3 text-right">Retención IRPF</th>
+                <th class="p-3 text-right">Gastos Deducibles</th>
+                <th class="p-3 text-right">Rdto. Neto</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyRendimientos">
+              <tr>
+                <td colspan="6" class="p-4 text-center text-slate-400">No hay rendimientos registrados para este año fiscal.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabla Ganancias Patrimoniales -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-4 bg-slate-50 border-b border-slate-200 font-bold text-slate-700 text-sm flex justify-between">
+          <span>Ganancias y Pérdidas Patrimoniales</span>
+          <span id="subtotalGanancias" class="text-emerald-700 font-mono">0.00 €</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-slate-100 text-xs uppercase text-slate-500 border-b">
+              <tr>
+                <th class="p-3">Tipo Activo</th>
+                <th class="p-3">Descripción</th>
+                <th class="p-3 text-right">Valor Transmisión</th>
+                <th class="p-3 text-right">Valor Adquisición</th>
+                <th class="p-3 text-right">Resultado Neto</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyGanancias">
+              <tr>
+                <td colspan="5" class="p-4 text-center text-slate-400">No hay transmisiones registradas para este año fiscal.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
   </main>
 
+  <!-- Modal Rendimientos -->
+  <div id="modalRendimiento" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <h3 class="text-lg font-bold text-slate-800">Añadir Rendimiento de Capital</h3>
+      <form id="formRendimiento" onsubmit="guardarRendimiento(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo</label>
+          <select id="rTipo" class="w-full p-2 border rounded-lg text-sm bg-slate-50">
+            <option value="Dividendo">Dividendo de acciones</option>
+            <option value="Interés Bancario">Interés bancario / Depósito</option>
+            <option value="Cupón Renta Fija">Cupón / Deuda Pública</option>
+            <option value="Alquiler">Alquiler cobrado (Inmobiliario)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Entidad / Concepto</label>
+          <input type="text" id="rEntidad" required placeholder="Ej. Banco Santander, Iberdrola..." class="w-full p-2 border rounded-lg text-sm">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Ingreso Bruto (€)</label>
+            <input type="number" step="0.01" id="rBruto" required placeholder="0.00" class="w-full p-2 border rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Retención IRPF (€)</label>
+            <input type="number" step="0.01" id="rRetencion" value="0.00" class="w-full p-2 border rounded-lg text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Gastos Deducibles (€)</label>
+          <input type="number" step="0.01" id="rGastos" value="0.00" class="w-full p-2 border rounded-lg text-sm">
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="cerrarModal('modalRendimiento')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+          <button type="submit" class="px-4 py-2 text-sm bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Ganancias -->
+  <div id="modalGanancia" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+      <h3 class="text-lg font-bold text-slate-800">Añadir Ganancia / Pérdida Patrimonial</h3>
+      <form id="formGanancia" onsubmit="guardarGanancia(event)" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Tipo de Activo</label>
+          <select id="gTipo" class="w-full p-2 border rounded-lg text-sm bg-slate-50">
+            <option value="Acciones">Acciones / ETFs</option>
+            <option value="Fondos">Fondos de Inversión</option>
+            <option value="Criptoactivos">Criptoactivos</option>
+            <option value="Inmueble">Inmueble / Vivienda</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción</label>
+          <input type="text" id="gDesc" required placeholder="Ej. Venta 50 acciones Apple, Fondo Indexado..." class="w-full p-2 border rounded-lg text-sm">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Valor Venta (€)</label>
+            <input type="number" step="0.01" id="gVenta" required placeholder="0.00" class="w-full p-2 border rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Valor Compra (€)</label>
+            <input type="number" step="0.01" id="gCompra" required placeholder="0.00" class="w-full p-2 border rounded-lg text-sm">
+          </div>
+        </div>
+        <div class="flex justify-end space-x-2 pt-2">
+          <button type="button" onclick="cerrarModal('modalGanancia')" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
+          <button type="submit" class="px-4 py-2 text-sm bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
-    // Configuración - Sustituir con tu ID de Cliente de Google Cloud
-    const CLIENT_ID = '279033613794-jl8m7fpei8chp3tc76fuhgbmsunvg4gt.apps.googleusercontent.com´;
+    // Tu Client ID integrado
+    const CLIENT_ID = '279033613794-jl8m7fpei8chp3tc76fuhgbmsunvg4gt.apps.googleusercontent.com';
     const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+    const FILE_NAME = 'datos_fiscales.json';
 
-    let tokenClient;
+    let tokenClient = null;
     let accessToken = null;
+    let fileId = null;
+    let baseDatos = { rendimientos: [], ganancias: [] };
 
-    function initGoogleAuth() {
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: (tokenResponse) => {
-          if (tokenResponse && tokenResponse.access_token) {
-            accessToken = tokenResponse.access_token;
-            document.getElementById('statusText').innerHTML = '✅ <strong class="text-green-600">Conectado a Google Drive con éxito.</strong> Listo para guardar datos fiscales.';
-            document.getElementById('loginBtn').innerText = 'Conectado';
-            document.getElementById('loginBtn').classList.replace('bg-white', 'bg-green-100');
-            document.getElementById('loginBtn').classList.replace('text-blue-700', 'text-green-800');
-          }
-        },
-      });
+    function iniciarConexion() {
+      if (typeof google === 'undefined') {
+        alert('Cargando servicios de Google... Por favor, pulsa en 2 segundos.');
+        return;
+      }
+      if (!tokenClient) {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: async (response) => {
+            if (response.error) {
+              alert('Error de autenticación: ' + response.error);
+              return;
+            }
+            accessToken = response.access_token;
+            actualizarInterfazConectada();
+            await sincronizarConDrive();
+          },
+        });
+      }
+      tokenClient.requestAccessToken({ prompt: '' });
     }
 
-    function handleAuth() {
-      if (!accessToken) {
-        if (!tokenClient) initGoogleAuth();
-        tokenClient.requestAccessToken();
+    function actualizarInterfazConectada() {
+      const btn = document.getElementById('authBtn');
+      btn.classList.remove('bg-white', 'text-blue-800');
+      btn.classList.add('bg-emerald-600', 'text-white');
+      document.getElementById('authIcon').innerText = '✅';
+      document.getElementById('authText').innerText = 'Sincronizado';
+
+      const banner = document.getElementById('statusBanner');
+      banner.classList.remove('bg-amber-50', 'border-amber-200', 'text-amber-900');
+      banner.classList.add('bg-emerald-50', 'border-emerald-200', 'text-emerald-900');
+      document.getElementById('statusIcon').innerText = '📁';
+      document.getElementById('statusMsg').innerText = 'Conectado a Google Drive. Archivo de datos sincronizado.';
+      document.getElementById('fileBadge').classList.remove('hidden');
+    }
+
+    async function sincronizarConDrive() {
+      try {
+        // 1. Buscar si el archivo existe
+        const query = encodeURIComponent(`name = '${FILE_NAME}' and trashed = false`);
+        const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${query}`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const searchData = await searchRes.json();
+
+        if (searchData.files && searchData.files.length > 0) {
+          fileId = searchData.files[0].id;
+          // Leer contenido existente
+          const fileRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          baseDatos = await fileRes.json();
+        } else {
+          // Crear nuevo archivo
+          await guardarEnDrive();
+        }
+        renderizarTablas();
+      } catch (err) {
+        console.error('Error al sincronizar con Google Drive:', err);
       }
+    }
+
+    async function guardarEnDrive() {
+      if (!accessToken) return;
+      const metadata = { name: FILE_NAME, mimeType: 'application/json' };
+      const body = JSON.stringify(baseDatos, null, 2);
+
+      let url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+      let method = 'POST';
+
+      if (fileId) {
+        url = `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`;
+        method = 'PATCH';
+      }
+
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', new Blob([body], { type: 'application/json' }));
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: form
+      });
+      const data = await res.json();
+      if (data.id) fileId = data.id;
+    }
+
+    function renderizarTablas() {
+      const anio = parseInt(document.getElementById('selectAnio').value);
+      
+      // Filtrar por año
+      const rList = (baseDatos.rendimientos || []).filter(r => r.anio === anio);
+      const gList = (baseDatos.ganancias || []).filter(g => g.anio === anio);
+
+      // Render Rendimientos
+      const tbodyR = document.getElementById('tbodyRendimientos');
+      if (rList.length === 0) {
+        tbodyR.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No hay rendimientos registrados para este año.</td></tr>';
+        document.getElementById('subtotalRendimientos').innerText = '0.00 €';
+      } else {
+        let totalNeto = 0;
+        tbodyR.innerHTML = rList.map(r => {
+          const neto = r.bruto - r.gastos;
+          totalNeto += neto;
+          return `<tr class="border-b hover:bg-slate-50">
+            <td class="p-3 font-medium">${r.tipo}</td>
+            <td class="p-3">${r.entidad}</td>
+            <td class="p-3 text-right font-mono">${r.bruto.toFixed(2)} €</td>
+            <td class="p-3 text-right font-mono text-red-600">${r.retencion.toFixed(2)} €</td>
+            <td class="p-3 text-right font-mono">${r.gastos.toFixed(2)} €</td>
+            <td class="p-3 text-right font-mono font-bold ${neto >= 0 ? 'text-blue-700' : 'text-red-600'}">${neto.toFixed(2)} €</td>
+          </tr>`;
+        }).join('');
+        document.getElementById('subtotalRendimientos').innerText = totalNeto.toFixed(2) + ' €';
+      }
+
+      // Render Ganancias
+      const tbodyG = document.getElementById('tbodyGanancias');
+      if (gList.length === 0) {
+        tbodyG.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">No hay transmisiones registradas para este año.</td></tr>';
+        document.getElementById('subtotalGanancias').innerText = '0.00 €';
+      } else {
+        let totalResultado = 0;
+        tbodyG.innerHTML = gList.map(g => {
+          const resultado = g.venta - g.compra;
+          totalResultado += resultado;
+          return `<tr class="border-b hover:bg-slate-50">
+            <td class="p-3 font-medium">${g.tipo}</td>
+            <td class="p-3">${g.desc}</td>
+            <td class="p-3 text-right font-mono">${g.venta.toFixed(2)} €</td>
+            <td class="p-3 text-right font-mono">${g.compra.toFixed(2)} €</td>
+            <td class="p-3 text-right font-mono font-bold ${resultado >= 0 ? 'text-emerald-600' : 'text-red-600'}">${resultado >= 0 ? '+' : ''}${resultado.toFixed(2)} €</td>
+          </tr>`;
+        }).join('');
+        document.getElementById('subtotalGanancias').innerText = (totalResultado >= 0 ? '+' : '') + totalResultado.toFixed(2) + ' €';
+      }
+
+      document.getElementById('totalRegistros').innerText = `${rList.length + gList.length} registros cargados`;
+    }
+
+    function cambiarAnio() {
+      renderizarTablas();
+    }
+
+    function abrirModalRendimiento() {
+      if (!accessToken) { alert('Conecta primero tu Google Drive.'); return; }
+      document.getElementById('modalRendimiento').classList.remove('hidden');
+    }
+
+    function abrirModalGanancia() {
+      if (!accessToken) { alert('Conecta primero tu Google Drive.'); return; }
+      document.getElementById('modalGanancia').classList.remove('hidden');
+    }
+
+    function cerrarModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    async function guardarRendimiento(e) {
+      e.preventDefault();
+      const nuevo = {
+        anio: parseInt(document.getElementById('selectAnio').value),
+        tipo: document.getElementById('rTipo').value,
+        entidad: document.getElementById('rEntidad').value,
+        bruto: parseFloat(document.getElementById('rBruto').value) || 0,
+        retencion: parseFloat(document.getElementById('rRetencion').value) || 0,
+        gastos: parseFloat(document.getElementById('rGastos').value) || 0,
+        fecha: new Date().toISOString()
+      };
+      if (!baseDatos.rendimientos) baseDatos.rendimientos = [];
+      baseDatos.rendimientos.push(nuevo);
+      cerrarModal('modalRendimiento');
+      document.getElementById('formRendimiento').reset();
+      renderizarTablas();
+      await guardarEnDrive();
+    }
+
+    async function guardarGanancia(e) {
+      e.preventDefault();
+      const nuevo = {
+        anio: parseInt(document.getElementById('selectAnio').value),
+        tipo: document.getElementById('gTipo').value,
+        desc: document.getElementById('gDesc').value,
+        venta: parseFloat(document.getElementById('gVenta').value) || 0,
+        compra: parseFloat(document.getElementById('gCompra').value) || 0,
+        fecha: new Date().toISOString()
+      };
+      if (!baseDatos.ganancias) baseDatos.ganancias = [];
+      baseDatos.ganancias.push(nuevo);
+      cerrarModal('modalGanancia');
+      document.getElementById('formGanancia').reset();
+      renderizarTablas();
+      await guardarEnDrive();
     }
   </script>
 </body>
